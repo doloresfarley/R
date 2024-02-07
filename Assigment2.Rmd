@@ -1,0 +1,220 @@
+---
+title: "MBA 739 Assignment 2"
+author: "Dolores Farley"
+date: "2024-01-21"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+
+```{r }
+# Q1 At what prices are the laptops selling (hint: use a histogram). Use the chart to comment on the range of prices and the most common price range. 
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+LaptopSalesJan <- read.csv('~/Desktop/GMU School/MBA_739/Week2/Assignment2/LaptopSalesJan.csv') 
+
+# Preprocessing steps, Fixed Date Column
+LaptopSalesJanDate <-  LaptopSalesJan %>%
+  mutate(DateTime = mdy_hm(Date)) %>%
+  mutate(DayofWeek = wday(DateTime, label = TRUE) , ValidDate = as.Date(DateTime) )
+
+
+ggplot(data = LaptopSalesJan, aes(RetailPrice)) +
+      geom_histogram(fill = "blue", color = "white", bins = 60) +
+      labs(title = "Laptop Prices in January", x = "Price(Dollars)", y = "Units Sold") 
+
+# With a mean sale price of $487.94 with most sales around 400 to 550 range.
+
+```
+### Question 1 Answer:
+
+ With a mean sale price of $487.94 with most sales around 400 to 550 range.
+
+```{r }
+
+# Q2.	What were the dates when Acell had its minimum sales and maximum sales in terms of counts of laptops. Overall which HDSize was more popular throughout January, and which HDSize was least popular of the lot.  
+
+library(ggplot2)
+library(tidyverse)
+
+
+# Generate the summary data
+date_data<- LaptopSalesJanDate%>%
+  filter(RetailPrice == max(RetailPrice) | RetailPrice == min(RetailPrice))
+
+date_data2<- LaptopSalesJanDate%>%
+  group_by(ValidDate) %>%
+   summarize(Count = n())
+  
+minCount <- which(date_data2$Count == (min(date_data2$Count)) )
+maxCount<- which(date_data2$Count == (max(date_data2$Count)) )
+
+#Print Lowest sales of laptops
+print(date_data2[minCount,1:2])
+
+#Print Highest sales of laptops
+print(date_data2[maxCount,1:2])
+
+# Generate plot
+ggplot(data = date_data2, aes(x = ValidDate, y = Count)) +
+geom_bar(stat = "identity") +
+   labs(title = "# of Laptops Sold per Day", x = "Date", y = "Count")
+
+
+# The date of min # of laptops sold was on "2008-01-14" at 228 laptops sold
+# The date of max # of laptops sold was on "2008-01-31" at 297 laptops sold
+
+```
+### Question 2A Answer:
+
+The date of min # of laptops sold was on "2008-01-14" at 228 laptops sold.
+
+The date of max # of laptops sold was on "2008-01-31" at 297 laptops sold.
+
+
+```{r }
+# Q2B Overall which HDSize was more popular throughout January, and which HDSize was least popular of the lot.
+
+library(ggplot2)
+library(tidyverse)
+  
+hd_data <- LaptopSalesJan %>%
+     filter(Date < '2008-02-01')
+
+# Generate plot
+ggplot( data =hd_data, mapping = aes(x =HDSize)) +
+    geom_histogram(bins=45 ) + scale_x_continuous(breaks = seq(20, 350, 20)) +
+   labs(title = "Count of HD Sizes", x = "HD Size", y = "Count")
+
+# Q2B:
+# HDSize was more popular throughout January is 300.
+# HDSize was least popular of the lot was 40.  
+
+
+  
+```
+
+
+##
+
+### Question 2B Answer:
+
+
+ HDSize was more popular throughout January is 300.
+ HDSize was least popular of the lot was 40. 
+
+```{r }
+# Q3.	Does retail price correlate with customer store distance?(Hint: Use Scatter Plots) Use the chart to additionally answer, are there any outliers in the retail price or custom store distance? Would you include custom store distance as a predictor of store price? 
+
+library(ggplot2)
+library(tidyverse)
+hd_data <- LaptopSalesJan %>%
+     filter(Date < '2008-02-01')
+
+# Generate plot
+ggplot( data =hd_data, mapping = aes(x =RetailPrice, y = CustomerStoreDistance)) +
+    geom_point() +
+  labs(title = "Retail Price vs Distance", x = "Retail Price", y = "Distance")
+
+# It does not look like a trend of retail price and distance. No, I would not use custom store distance as a predictor of store price.
+```
+### Question 3 Answer:
+
+It does not look like a trend of retail price and distance.
+No, I would not use custom store distance as a predictor of store price.
+
+
+```{r }
+# Q4. Do the median values of the distance traveled by the customers vary based on the day of the week? Which are the days when you see maximum outliers (Hint - use Boxplot). Use the chart to additionally answer, are customers willing to travel more than 20K when the Applications are bundled.(Hint: Check for the outliers, and use subplots)
+
+# Generate plot
+ggplot(data = LaptopSalesJanDate, aes(x = DayofWeek, y = CustomerStoreDistance, fill=BundledApplications)) + 
+    geom_boxplot() +
+  facet_wrap(~BundledApplications, nrow = 1) +
+  labs(title = "Days of the Week vs Distance, with and without Bundled Application", x = "Days of the Week", y = "Distance")
+
+## No, customers are not willing to travel MORE than 20K when the Applications are bundled, but a few customers are willing to travel just around 20k(outliers).
+```
+### Question 4 Answer:
+
+No, customers are not willing to travel MORE than 20K when the Applications are bundled.
+
+However, there are few customers are willing to travel just around 20k(outliers).
+
+```{r }
+#5.	Which stores(s) attracts customers who are willing to travel more? Create a new variable using case_when command to bin the store distance variable into following categories – “Under 5000”,”5001-10000”,”>10000”. (Hint: Use Stacked bar chart) 
+
+
+# Generate the summary data
+LaptopSalesD10000 <- LaptopSalesJan %>%
+   filter(CustomerStoreDistance >10000)
+
+LaptopSalesD10000 <- LaptopSalesD10000 %>%
+ mutate(StoreDistance = CustomerStoreDistance) %>%
+  group_by(StorePostcode) %>%
+  summarize(Count = n())
+
+ggplot(LaptopSalesD10000, aes(x = StorePostcode, y = Count)) +
+ geom_bar(stat = "identity") +
+  labs(title = "Stores(s) who attracts customers who travel more than 10000", x = "Store Postal Code", y = "Count")
+
+# The store with the postal code of SW18 1NN attracts the most customers who travel more than 10000
+
+```
+
+
+
+```{r }
+# 5.	Which stores(s) attracts customers who are willing to travel more? Create a new variable using case_when command to bin the store distance variable into following categories – “Under 5000”,”5001-10000”,”>10000”. (Hint: Use Stacked bar chart) 
+
+
+# Generate the summary data
+#CountDistanceBin <- LaptopSalesJan %>%
+# mutate(StoreDistance = case_when((CustomerStoreDistance <= 5000) ~ "Under 5000",
+#  (CustomerStoreDistance > 5000 & CustomerStoreDistance <= 10000) ~"5001-10000", TRUE ~ ">10000")) 
+  
+#CountDistanceBinGroup <- CountDistanceBin %>%
+#  group_by(StorePostcode,StoreDistance) %>%
+#  summarize(Count = n())
+
+#ggplot(CountDistanceBin, aes(x =StoreDistance, fill = StorePostcode)) +
+ #geom_bar(stat = "count", position="dodge") +
+  # labs(title = "Stores(s) who attracts the most customers", x = "Distance Groups", y = "Count")
+
+
+#Preprocessing steps
+LaptopSalesJanStore <- LaptopSalesJanDate %>%
+mutate(storeXF = as.factor(storeX)) %>%
+mutate(StoreDistanceBin = case_when((CustomerStoreDistance <= 5000) ~
+"Under 5000",
+(CustomerStoreDistance > 5000 &
+CustomerStoreDistance <= 10000) ~ "5001-10000",
+TRUE ~ ">10000")) %>%
+group_by(storeX, StoreDistanceBin) %>%
+summarise(count = n())
+## `summarise()` has grouped output by 'storeXF'. Y
+
+ggplot(LaptopSalesJanStore, mapping = aes(x = storeX,
+fill=StoreDistanceBin)) +
+geom_bar(stat = "count", position = "fill") +
+labs(title = "Customer's attraction to Distance", x = "storeX", y =
+"Customers") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# However compare to the other 2 distance buckets, the customers that travel over 10000 is must less. 
+# Customer are more likely to travel a distance less than 5000
+# with SW1P 3AU being the store customers visit the most.
+
+```
+### Question 5 Answer:
+
+The store with the postal code of SW18 1NN attracts the most customers who travel more than 10000.
+
+However compare to the other 2 distance buckets, the customers that travel over 10000 is must less. 
+Customer are more likely to travel a distance less than 5000
+with SW1P 3AU being the store customers visit the most.
+
+
+

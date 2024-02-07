@@ -1,0 +1,272 @@
+---
+title: 'Week 4: Assignment #4'
+author: "Dolores Farley"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+---
+
+###
+Predicting Prices of Used Cars. The file ToyotaCorolla.csv contains data on used cars (Toyota
+Corolla) on sale during late summer of 2004 in the Netherlands. It has 1436 records containing
+details on 38 attributes, including Price, Age, Kilometers, HP, and other specifications. The goal is to
+predict the price of a used Toyota Corolla based on its specifications. (The example in Section 6.4 is
+a subset of this dataset.)
+
+
+Split the data into training (60%) and validation (40%) datasets.
+
+Run a multiple linear regression with the outcome variable Price and predictor variables Age_08_04,
+KM, Fuel_Type, HP, Automatic, Doors, Quarterly_Tax, Mfr_Guarantee, Guarantee_Period, Airco,
+Automatic_airco, CD_Player, Powered_Windows, Sport_Model, and Tow_Bar.
+
+• What appear to be the three or four most important car specifications for predicting the
+car’s price?
+• Using metrics you consider useful, assess the performance of the model in predicting prices.
+
+```{r }
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(caret)
+library(dplyr)
+library(rpart)
+library(rpart.plot, warn.conflicts=FALSE)
+library(pROC)
+library(skimr)
+
+
+ToyotaCorolla  <- read.csv("~/Desktop/GMU School/MBA_739/Week4/Week4Assignment/ToyotaCorolla.csv")
+
+#Run a multiple linear regression with the outcome variable Price and predictor variables Age_08_04,
+#KM, Fuel_Type, HP, Automatic, Doors, Quarterly_Tax, Mfr_Guarantee, Guarantee_Period, Airco,
+#Automatic_airco, CD_Player, Powered_Windows, Sport_Model, and Tow_Bar.
+
+test<- na.omit(ToyotaCorolla[,c("Price")])
+
+colnamesToyotaCorolla = colnames(ToyotaCorolla)
+
+ToyotaCorolla.df <- na.omit(ToyotaCorolla[,c("Price", "Age_08_04","KM","Fuel_Type","HP",
+                                             "Automatic", "Doors", "Quarterly_Tax", 
+                                             "Mfr_Guarantee", "Guarantee_Period",
+                                             "Airco", "Automatic_airco", "CD_Player", 
+                                             "Powered_Windows",
+                                             "Sport_Model", "Tow_Bar")])
+
+
+ToyotaCorolla.df <- na.omit(ToyotaCorolla)
+
+
+t(t(names(ToyotaCorolla.df)))
+library(tidymodels)
+set.seed(739) # Setting random sample seed
+
+split_dataset <- initial_split(ToyotaCorolla.df, prop=0.6)
+
+data_training <- split_dataset %>% training()
+data_testing <- split_dataset %>% testing()
+
+# 1m(Price-., data=toyota_corolla_training,na.action=na. exclude)
+ fit <- lm(Price~., data = data_training) #, na.action=na.exclude)
+ 
+fit <- lm(Price~ Age_08_04 + KM + Fuel_Type + HP + Automatic + Doors + Quarterly_Tax + Mfr_Guarantee + Guarantee_Period + Airco + Automatic_airco + CD_Player + Powered_Windows + Sport_Model + Tow_Bar, data = data_training)
+
+summary(fit)
+
+library(broom)
+coefs <- tidy(fit)
+coefs[order(coefs$estimate, decreasing = TRUE),]
+
+coefs
+
+pred_t <- predict(fit)
+
+pred_v <-  predict(fit, newdata=data_testing)
+
+library(forecast) 
+
+# training
+accuracy(pred_t,data_training$Price)
+# validation
+accuracy(pred_v, data_testing$Price)
+
+
+```
+
+##
+
+\newpage
+
+## Question 1a
+
+### What appear to be the three or four most important car specifications for predicting the car’s price?
+
+Using the significant measure of 0.005 for the p-value, the four most important car specifications for predicting the car’s price:
+
+Based on the highest coefficients and their associated p-values, the four most important car specifications for predicting the car's price are:
+
+1. Automatic_airco: The coefficient is 3034.10841724, and the p-value is extremely low (3.082497e-40), indicating a significant positive association with car price.
+
+2. Fuel_TypeDiesel: The coefficient is 1969.57233905, and the p-value is very low (3.350923e-06), suggesting a significant positive association with car price.
+
+3. Fuel_TypePetrol: The coefficient is 1835.36489709, and the p-value is very low (2.732511e-05), indicating a significant positive association with car price.
+
+4. Automatic: The coefficient is 717.27637735, and the p-value is relatively low (1.769056e-04), suggesting a positive association with car price.
+
+These specifications have the most substantial coefficients and low p-values, indicating their strong influence on predicting car prices in the model. 
+
+## Question 1b: 
+### Using metrics you consider useful, assess the performance of the model in predicting prices.
+
+By using the R-squared metrics is consider useful in assess the performance of the model in predicting prices.
+
+R-squared measures the goodness of fit of the model. R-squared values range from 0 to 1, where 0 indicates that the model does not explain any variance, and 1 indicates that the model explains all the variance. In this example, the R-squared metrics is 0.8888 which is closer to 1 than 0.
+
+The R-squared metrics is: 0.8888.
+
+Acurancy of the Training and Test model is followed:
+
+             ME     RMSE       MAE        MPE       MAPE
+Test set 4.689844e-11 1244.518 942.6972 -0.9820002 9.263066
+
+             ME     RMSE     MAE       MPE    MAPE
+Test set -225.4273 1171.699 891.467 -3.216154 9.06487
+
+
+1. ME (Mean Error):
+For the training set: Approximately 0 (very close to zero).
+For the test set: -225.4273.
+Mean Error indicates the average difference between predicted and actual values. A value close to zero suggests good accuracy, while a negative or positive value indicates a bias in predictions (underestimation or overestimation).
+
+2. RMSE (Root Mean Squared Error):
+For the training set: 1244.518.
+For the test set: 1171.699.
+Root Mean Squared Error is a measure of the average magnitude of the errors. Lower values are better, indicating better model performance.
+
+3. MAE (Mean Absolute Error):
+For the training set: 942.6972.
+For the test set: 891.467.
+Mean Absolute Error is the average absolute difference between predicted and actual values. Similar to RMSE, lower values are better.
+
+4. MPE (Mean Percentage Error):
+For the training set: Approximately 0.982% (negative, suggesting a slight underestimation).
+For the test set: -3.216154% (negative, indicating a larger underestimation).
+Mean Percentage Error represents the average percentage difference between predicted and actual values. A value close to zero is desirable.
+
+5. MAPE (Mean Absolute Percentage Error):
+For the training set: 9.263066%.
+For the test set: 9.06487%.
+Mean Absolute Percentage Error is similar to MPE but in percentage terms and without considering the direction of the error.
+
+Conclusion:
+
+The model seems to perform well on the training set, with ME, RMSE, MAE, MPE, and MAPE all showing reasonable values.
+
+On the test set, there is a negative ME, suggesting an overall underestimation, and the RMSE and MAE values are relatively high. This indicates that the model may not generalize as well to new, unseen data.
+
+## Clustering
+Framingham Heart Study – Clustering
+When it launched in 1948, the original goal of the Framingham Heart Study (FHS) was to identify
+common factors or characteristics that contribute to cardiovascular disease. Over the years, the FHS
+has become a successful multigenerational study that analyzes family patterns of cardiovascular and
+other diseases. We will use a small subset of that dataset for cluster analysis.
+Run the K-Means clustering algorithm, and determine the distance between clusters. Using
+appropriate methods, determine the total number of clusters.
+Use the R Markdown file available in RStudio Cloud/Blackboard to complete the homework.
+
+``` {r}
+framingham  <- read.csv("~/Desktop/GMU School/MBA_739/Week4/Week4Assignment/framingham_fulldata.csv")
+```
+## Determining the optimal number of clusters
+
+As you may recall from the above commands, we have to specify the number of clusters to use.
+However, it is preferable to use the optimal number of clusters.
+To ensure that we use the Silhouette Method.
+
+### Silhouette Method to determine K
+
+The average silhouette approach measures the quality of a clustering.
+That is, it determines how well each object lies within its cluster.
+A high average silhouette width indicates a good clustering.
+The average silhouette method computes the average silhouette of observations for different values of k.
+The optimal number of clusters k is the one that maximizes the average silhouette over a range of possible values for k.
+
+This is implemented using **fviz_nbclust()** with the method specified as `silhouette`.
+
+```{r}
+library(tidyverse)
+library(factoextra)
+library(skimr)
+framingham  <- read.csv("~/Desktop/GMU School/MBA_739/Week4/Week4Assignment/framingham_fulldata.csv")
+# Construct a normalized dataset for everything other than the labels
+
+framingham <-  na.omit(framingham)
+
+#skim(framingham)
+#summary(framingham)
+
+
+framinghamScaled <- framingham %>%
+  select(-male) %>%
+  select(-currentSmoker) %>%
+  select(-BPMeds) %>%
+  select(-prevalentStroke) %>%
+  select(-prevalentHyp) %>%
+  select(-diabetes) %>%
+  select(-TenYearCHD) %>% #Removed Dependent Variable
+  scale()
+
+set.seed(1234)
+
+km.framingham =kmeans(framinghamScaled,2,nstart=25)
+
+# Visualize K-Means Clustering
+fviz_cluster(km.framingham, data = framingham,
+             palette = c("#1B9E77", "#D95F02"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+             )
+
+# Visualize K-Means Clustering
+#fviz_cluster(km.framingham, data = framingham,
+#             palette = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E"), 
+#             geom = "point",
+#             ellipse.type = "convex", 
+#             ggtheme = theme_bw()
+#              )
+
+#We can also determine as to which clusters are closer to each other by looking at the distance between the clusters. As seen from the following code, Clusters 1 and 2 are more closer to each other, compared to other options. This can be visually ascertained from the previous command.
+#try: distances between clusters
+dist(km.framingham$centers)
+
+
+# Silhoutte Method
+fviz_nbclust(framinghamScaled, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+\newpage
+
+
+## Question 2:
+
+Run the K-Means clustering algorithm, and determine the distance between clusters.
+
+Using appropriate methods, determine the total number of clusters.
+
+### Answer 
+
+I removed the depenent variable TenYearCHD and scaled the input data.
+
+I also removed all the non continues data values: The data must contains only continuous variables, as the k-means algorithm uses variable means. As we don’t want the k-means algorithm to depend to an arbitrary variable unit, we start by scaling the data using the R function scale.
+Determining the optimal number of clusters is 2
+
+Determine the distance between clusters
+                 
+```{r}
+dist(km.framingham$centers)
+
+# Clusters Distance between each clusters
+```

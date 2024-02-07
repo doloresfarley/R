@@ -1,0 +1,123 @@
+---
+title: "Assignment 3"
+author: "Dolores Farley"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+---
+a. Consider the results of the association rules analysis shown in Table 2
+i. For the first row, explain the “confidence” output and how it is calculated.
+ii. For the first row, explain the “support” output and how it is calculated.
+iii. For the first row, explain the “lift” and how it is calculated.
+iv. For the first row, explain the rule that is represented there in words.
+---
+## Answer 1
+
+### Question a i. Answer:
+For the first row, “confidence” output calculated by taking the number of transactions where {Blush, Concealer, Mascara, Eye.shadow, Lipstick} are present, {Eyebrow.Pencils} is also present divided by number of transactions where {Blush, Concealer, Mascara, Eye.shadow, Lipstick} are present. The confidence value of approximately 30.23% suggests that in 30.23% of transactions where {Blush, Concealer, Mascara, Eye.shadow, Lipstick} are present, {Eyebrow.Pencils} is also present. It provides a measure of how likely the presence of the left-hand side items is associated with the presence of the right-hand side item.
+
+### Question a ii. Answer:
+For the first row, the “support” output is calculated by taking the number of transactions where {Blush, Concealer, Mascara, Eye.shadow, Lipstick} are present, {Eyebrow.Pencils} is also present divided by TOTAL number of transactions. The support value of 0.013 indicates that this specific combination of items occurs in approximately 1.30% of the total transactions in the data set. It is a measure of how frequently the rule occurs in the dataset, and it helps identify the significance of the rule in the overall data set.
+
+### Question a iii. Answer:
+For the first row,the “lift” is calculated by the confidence dived by the benchmark confidence.
+The benchmark confidence in this examples is the  number of transactions where {Eyebrow.Pencils} is present divided by TOTAL number of transactions. 
+
+In this data set it is 42/1000 = 0.042. Therefore, 
+the lift = confidence/benchmark confidence  
+         = 0.3023255814/0.042 = 7.198228128
+         
+With a lift value of 7.198228128 means that if {Blush, Concealer, Mascara, Eye.shadow, Lipstick} are present then it is 7.20 times more likely when {Eyebrow.Pencils} is also present, compared to when {Eyebrow.Pencils} is not present.
+
+### Question a iv. Answer:
+The rule that is represents the first row is that if the customer purchases Blush, Concealer, Mascara, Eye.shadow, and Lipstick, then there is approximately a 30.23% confidence that they will also purchase Eyebrow Pencils. The lift value of 7.20 further suggests that this association is stronger than what would be expected if the purchase of the two sets of items were independent of each other.
+
+
+```{r }
+library("Matrix")
+library("arules")
+library(arulesViz)
+
+cosmetics <- read.csv('~/Desktop/GMU School/MBA_739/Week 3/Assignment3/Cosmetics.csv') 
+
+# create a binary incidence matrix
+cosmetics.df <- cosmetics[, 2:15]
+cosmetics.mat <- as.matrix(cosmetics.df > 0)
+ 
+#  convert the binary incidence matrix into a transactions database
+cosmetics.trans <- as(cosmetics.mat, "transactions")
+#inspect(cosmetics.trans[1:10])
+ 
+# plot data
+itemFrequencyPlot(cosmetics.trans)
+ 
+# run apriori function
+rules <- apriori(cosmetics.trans)
+ 
+# inspect top-30 rules sorted by lift
+ 
+# inspect top-30 rules sorted by lift
+inspect(head(sort(rules, by = "lift"), n=3))
+
+```
+\newpage 
+
+## Answer 2
+
+### Rule 1:
+
+Antecedent (lhs): {Brushes}
+
+Consequent (rhs): {Nail.Polish}
+
+Support: 0.149 (14.9% of transactions contain both Brushes and Nail.Polish)
+
+Confidence: 1.0000000 (100% confidence in the rule)
+
+Coverage: 0.149 (14.9% coverage of the entire dataset)
+
+Lift: 3.571429 (Transactions containing Brushes are 3.57 times more likely to also contain Nail.Polish)
+
+Count: 149 transactions
+
+Interpretation: This rule suggests a strong association between purchasing Brushes and Nail.Polish. The 100% confidence indicates that every transaction with Brushes also includes Nail.Polish. The lift value indicates that the likelihood of buying Nail. Polish is 3.57 times higher when Brushes are purchased.
+
+
+### Rule 2:
+
+Antecedent (lhs): {Blush, Concealer, Eye.shadow}
+
+Consequent (rhs): {Mascara}
+
+Support: 0.119 (11.9% of transactions contain Blush, Concealer, Eye.shadow, and Mascara)
+
+Confidence: 0.9596774 (95.97% confidence in the rule)
+
+Coverage: 0.124 (12.4% coverage of the entire dataset)
+
+Lift: 2.688172 (Transactions containing Blush, Concealer, Eye.shadow are 2.69 times more likely to also contain Mascara)
+
+Count: 119 transactions
+
+Interpretation: This rule indicates a strong association between purchasing Blush, Concealer, Eye.shadow and also purchasing Mascara. The high confidence (95.97%) suggests that the association is reliable. Polish is 2.69 times higher when Blush, Concealer, Eye.shadow are purchased.
+
+### Rule 3:
+
+Antecedent (lhs): {Blush, Eye.shadow}
+
+Consequent (rhs): {Mascara}
+
+Support: 0.169 (16.9% of transactions contain Blush, Eye.shadow, and Mascara)
+
+Confidence: 0.9285714 (92.86% confidence in the rule)
+
+Coverage: 0.182 (18.2% coverage of the entire dataset)
+
+Lift: 2.601040 (Transactions containing Blush, Eye.shadow are 2.60 times more likely to also contain Mascara)
+
+Count: 169 transactions
+
+Interpretation: This rule suggests a strong association between purchasing Blush, Eye.shadow, and Mascara. The high confidence (92.86%) indicates a reliable association, and the lift value (2.60) suggests an increased likelihood of purchasing Mascara when Blush and Eye.shadow are bought together.
+
