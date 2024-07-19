@@ -1,0 +1,114 @@
+---
+title: "Week 6 - In Class Exercises Neural Networks"
+output: html_document
+---
+
+```{r}
+#Load libraries
+library(fastDummies)
+library(dplyr)
+library(rsample)
+library(neuralnet)
+library(caret)
+```
+
+Initial data loading and data preparation activities.
+```{r}
+# Load the data
+bank_df <- read.csv("C:/Users/nmenon/Dropbox/My Files/Teach/MBA739/Spring2024/RMD_files/WeeklyTutorials/Datasets/UniversalBank.csv")
+```
+
+```{r}
+# Data preparation
+bank_df <- bank_df %>%
+  select(-c("ID","ZIP.Code"))
+```
+
+```{r}
+# Separate the variables to be scaled and the dummy variables
+scale_vars <- bank_df %>%
+  select(-c("Family", "Education", "Personal.Loan")) # Add or remove variables as needed
+
+dummy_vars <- bank_df %>%
+  select(c("Family", "Education", "Personal.Loan")) # Add or remove variables as needed
+
+# Scale the variables
+maxs <- apply(scale_vars, 2, max)
+mins <- apply(scale_vars, 2, min)
+
+scale_vars <- scale_vars %>%
+  scale(center = mins, scale = maxs - mins) %>%
+  as.data.frame()
+
+dummy_vars <- dummy_vars %>%
+  mutate(Personal.Loan = as.factor(Personal.Loan)) %>%
+ mutate(Family=as.factor(Family)) %>%
+  mutate(Education=as.factor(Education))
+dummy_vars <- dummy_cols(dummy_vars, select_columns=c("Family","Education"),
+           remove_first_dummy = T)
+dummy_vars <- dummy_vars %>%
+  select(-c("Family","Education"))
+
+# Combine the scaled and dummy variables
+bank_df <- bind_cols(scale_vars, dummy_vars)%>%
+  mutate(Personal.Loan = as.factor(Personal.Loan)) 
+
+```
+
+* Use neuralnet for classification. Generate the neuralnets with following options and compare the models using classification performance metrics.
+
+* 1 hidden layer - 3 nodes
+* 2 hidden layers - 2 nodes each
+* 2 hidden layers - 3 nodes each
+
+```{r}
+
+# Split the data into training and testing sets
+set.seed(739)
+names(bank_df) <- make.names(names(bank_df))
+split_data <- initial_split(bank_df, prop = 0.6, strata = "Personal.Loan")
+train_data <- training(split_data)
+test_data <- testing(split_data)
+
+# Define neural networks 
+def_nn_1 <- c(3, 1)  # two hidden layer with 3,1 nodes
+def_nn_2 <- c(3, 2, 1)  # three hidden layers with 3,2,1 nodes each
+def_nn_3 <- c(4,3,2, 1)  # four hidden layers with 4,3,2,1 nodes each
+
+# Train neural network models
+nn_1 <- neuralnet(Personal.Loan ~ ., data = train_data, hidden = def_nn_1)
+nn_2 <- neuralnet(Personal.Loan ~ ., data = train_data, hidden = def_nn_2)
+nn_3 <- neuralnet(Personal.Loan ~ ., data = train_data, hidden = def_nn_3)
+
+# Predict on test data
+pred_1 <- predict(nn_1, test_data, type="class")
+pred_2 <- predict(nn_2, test_data, type="class")
+pred_3 <- predict(nn_3, test_data, type="class")
+
+temp_test <- subset(test_data, select = -Personal.Loan)
+nn_1.results <- compute(nn_1, temp_test)
+#create results dataframe with actual values and predicted of loan
+results <- data.frame(actual = test_data$Personal.Loan, prediction = as.factor(round(nn_1.results$net.result[,2])))
+roundedresultsdf=data.frame(results)
+table(roundedresultsdf$actual,roundedresultsdf$prediction)
+
+# Create confusion matrix
+conf_matrix_nn1 <- confusionMatrix(roundedresultsdf$actual,roundedresultsdf$prediction)
+#second model
+temp_test <- subset(test_data, select = -Personal.Loan)
+nn_2.results <- compute(nn_2, temp_test)
+results <- data.frame(actual = test_data$Personal.Loan, prediction = as.factor(round(nn_2.results$net.result[,2])))
+roundedresultsdf=data.frame(results)
+table(roundedresultsdf$actual,roundedresultsdf$prediction)
+conf_matrix_nn2 <- confusionMatrix(pred_2, test_data$Personal.Loan)
+#next model
+temp_test <- subset(test_data, select = -Personal.Loan)
+nn_3.results <- compute(nn_3, temp_test)
+results <- data.frame(actual = test_data$Personal.Loan, prediction = as.factor(round(nn_3.results$net.result[,2])))
+roundedresultsdf=data.frame(results)
+table(roundedresultsdf$actual,roundedresultsdf$prediction)
+conf_matrix_nn3 <- confusionMatrix(pred_3, test_data$Personal.Loan)
+
+```
+```
+

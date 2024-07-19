@@ -1,0 +1,72 @@
+---
+title: "Module 7 - Text Mining"
+author: "Nirup"
+date: "2024-02-21"
+output: html_document
+---
+
+```{r}
+#Load libraries
+library(tm)
+library(caret)
+library(tidyverse)
+library(tinytex)
+library(lsa)
+library(rsample)
+
+# Read in Data
+farm_ads <- read.csv("~/Desktop/GMU School/MBA_739/Week7/Week7 Office Hours/smoker.csv")
+text <- c (2)
+View(farm_ads)
+```
+```{r}
+# Preprocessing - convert to Corpus, Tokenization, Stopwords, and Step Doc
+barplot(prop.table(table(farm_ads$smoker)))
+farm_corp <- Corpus(VectorSource(farm_ads$TEXT))
+farm_corp <- farm_corp %>%
+  tm_map(removeNumbers) %>%
+  tm_map(tolower) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace) %>% 
+  tm_map(removeWords, stopwords("english")) %>%
+  tm_map(stemDocument) 
+inspect(farm_corp)
+tdm <- TermDocumentMatrix(farm_corp)
+```
+
+```{r}
+# Term Frequency-Inverse Document Frequency (TF-IDF) and latent semantic analysis
+removesparse = removeSparseTerms(tdm,0.95)
+#Extract Concepts
+farm_tdm<- weightTfIdf(removesparse)
+inspect(farm_tdm)
+#farm_tdm<- weightTfIdf(tdm)
+farm_concept <- lsa(farm_tdm, dim = 5)
+inspect(farm_tdm)
+```
+```{r}
+# convert TFIDF to data frame
+farm_df <- as.data.frame(as.matrix(farm_concept$dk)) 
+Ads_df_analysis <- data.frame(ifelse(farm_ads$smoker==-1, 0,farm_ads$smoker ), farm_df)
+names(Ads_df_analysis)[1] <- "smoker"
+barplot(prop.table(table(Ads_df_analysis$smoker)))
+```
+```{r}
+# Training the data 
+set.seed(739)
+farm_words_split <- initial_split(Ads_df_analysis , prop = 0.60)
+farm_words_split_train <- farm_words_split %>% 
+  training()
+Afarm_words_split_valid <- farm_words_split %>% 
+  testing()
+```
+```{r}
+# run logistic model on training
+reg <- glm(smoker~ ., data = farm_words_split_train, family = 'binomial') 
+#Accuracy on validation set
+pred <- predict(reg, newdata = Afarm_words_split_valid , type = "response")
+```
+```{r}
+#Confusion Matrix
+confusionMatrix(table(ifelse(pred>0.5, 1, 0), Afarm_words_split_valid$smoker))
+```

@@ -1,0 +1,142 @@
+---
+title: "Week5Dataset2"
+output: html_document
+date: "`r Sys.Date()`"
+---
+```{r }
+library(fastDummies)
+library(dplyr)
+library(ggplot2)
+
+TrainData2 = read.csv(file = "~/Desktop/GMU School/MBA_739/Project Week5/DataSet2/InitialEditTrainDataSource2.csv")
+TestData2 = read.csv(file = "~/Desktop/GMU School/MBA_739/Project Week5/DataSet2/InitialEditTestDataSource2.csv")
+
+library(corrplot)
+
+
+M = cor(TrainData2[,c(1,7,8,9,10,11,12,13,14,17,18,19,20,23,24)])
+corrplot(M, method = 'number') # colorful number
+corrplot(M, method = 'color')
+
+
+# Generate plot
+TrainData2 <-  TrainData2 %>%
+  mutate(Defaulted = ifelse(Default>0,"Yes","No")) %>%
+  
+  mutate(Income = Client_Income/1000) %>%
+  #filter(Income<300) %>%
+  mutate(Client_IncomeK = case_when((Income <= 50) ~ "Under 50K",(Income > 50 & Income <= 80) ~"50K-80K",(Income > 80 & Income <= 140) ~"80K-140K", TRUE ~ ">140k")) 
+
+ggplot( data =TrainData2, mapping = aes(x =Client_Income/1000, y = Loan_Annuity, fill=Defaulted)) + 
+    geom_boxplot() +
+  facet_wrap(~Defaulted, nrow = 1) 
+
+ggplot( data =TrainData2, mapping = aes(x =Client_IncomeK, y = Credit_Amount, fill=Defaulted)) + 
+    geom_boxplot() +
+  facet_wrap(~Defaulted, nrow = 1) +
+  labs(title = "Income(k) vs Credit and Who Defaulted", x = "Income(k)", y = "Credit Amount")
+
+ggplot( data =TrainData2, mapping = aes(x =Client_IncomeK, y = Loan_Annuity, fill=Defaulted)) + 
+    geom_boxplot() +
+  facet_wrap(~Defaulted, nrow = 1) +
+  labs(title = "Income(k) vs Loan annuity and Who Defaulted", x = "Income(k)", y = "Loan annuity in $")
+
+# Improve Historgram
+ggplot(data = TrainData2, aes(Income)) +
+      geom_histogram(fill = "blue", color = "white", bins =60) +
+      labs(title = "Histogram of Income", x = "Income ($K)", y = "Count") 
+
+
+
+```
+```{r}
+library(tidyverse)
+library(factoextra)
+library(skimr)
+
+set.seed(12345)
+
+#S Method
+DataSet2Scaled <- M  %>%
+  scale()
+
+fviz_nbclust(DataSet2Scaled, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+
+# k-Means clustering using kmeans()
+
+km.DataSet2Scaled=kmeans(DataSet2Scaled,2,nstart=25)
+
+fviz_cluster(km.DataSet2Scaled, data = DataSet2Scaled,
+             palette = c("#2E9FDF", "#FF0000"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+             )
+
+#km.DataSet2Scaled=kmeans(DataSet2Scaled,7,nstart=25)
+
+#fviz_cluster(km.DataSet2Scaled, data = DataSet2Scaled,
+#             palette = c("#2E9FDF", "#00AFBB", "#E7B800", "#0CCFBB", "#FF0000", "#A10000","#9E9FDF"), 
+#             geom = "point",
+#             ellipse.type = "convex", 
+#             ggtheme = theme_bw()
+#             )
+```
+
+```{r }
+library(fastDummies)
+library(dplyr)
+library(ggplot2)
+
+TrainData2 = read.csv(file = "~/Desktop/GMU School/MBA_739/Project Week5/DataSet2/InitialEditTrainDataSource2.csv")
+TestData2 = read.csv(file = "~/Desktop/GMU School/MBA_739/Project Week5/DataSet2/InitialEditTestDataSource2.csv")
+
+library(corrplot)
+
+
+M2 = cor(TestData2[,c(1,7,8,9,10,11,12,13,14,17,18,19,20,23,24)])
+corrplot(M2, method = 'number') # colorful number
+corrplot(M2, method = 'color')
+
+
+```
+```{r}
+library(tidyverse)
+library(skimr)
+library(factoextra)
+
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(caret)
+library(dplyr)
+library(rpart)
+library(rpart.plot, warn.conflicts=FALSE)
+library(pROC)
+
+
+#S Method
+fviz_nbclust(M2, kmeans, method = "silhouette")+
+  labs(subtitle = "Silhouette method")
+```
+
+``` {r}
+
+# Toydf[, c(5,8,10,11,12,13,14,15,16,17)] = lapply(Toydf[, c(5,8,10,11,12,13,14,15,16,17)],as.factor)
+
+# FHdfScaled[c(2,3,5,10,11,12,13,14,15)] <- scale(FHdfScaled[c(2,3,5,10,11,12,13,14,15)])
+
+# str(DATAFRAME)
+
+# ColumnNamesToDrop <- c("Accompany_Client_Alone", "Client_Income_Type_Businessman", "Client_Education_Graduation", "Client_Marital_Status_D",
+#
+#                       "Client_Gender_Male", "Loan_Contract_Type_CL", "Client_Housing_Type_Family", "Client_Occupation_Accountants",
+#
+#                       "Type_Organization_Advertising")
+
+# TrainDF = TrainDF[ , !(names(TrainDF) %in% ColumnNamesToDrop)]
+
+# colnames(TrainDF)
+
+```

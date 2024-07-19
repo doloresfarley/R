@@ -1,0 +1,235 @@
+---
+title: "Week 6 - Neural Networks"
+author: "Dolores Farley - George Mason University, School of Business"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+editor_options:
+  markdown:
+    wrap: sentence
+---
+
+```{r}
+library(neuralnet)
+library(nnet)
+library(caret)
+library(e1071)
+library(rsample)
+library(fastDummies)
+library(tidyverse)
+library(factoextra)
+library(skimr)
+library(dplyr)
+
+
+EmployeeData <- read_csv("~/Desktop/GMU School/MBA_739/Week6/Assignment6/EmployeeData.csv")
+EmployeeData <- EmployeeData %>%
+           mutate(left_company = as.factor(left_company))%>%
+  mutate(job_satisfaction = as.factor(job_satisfaction))%>%
+  mutate(performance_rating = as.factor(performance_rating))%>%
+  mutate(department = as.factor(department))%>%
+  mutate(job_level = as.factor(job_level))%>%
+  mutate(business_travel = as.factor(business_travel))%>%
+  mutate(marital_status = as.factor(marital_status))
+
+# Separate the variables to be scaled and the dummy variables
+scale_vars <- EmployeeData %>%
+  select(-c("job_satisfaction", "performance_rating", "department","job_level", "business_travel", "marital_status","left_company")) 
+
+# Separate the variables to be scaled and the dummy variables
+
+dummy_vars <- EmployeeData %>%
+  select(c("job_satisfaction", "performance_rating", "department","job_level", "business_travel", "marital_status","left_company")) 
+
+# Add or remove variables as needed
+
+# Scale the variables
+maxs <- apply(scale_vars, 2, max)
+mins <- apply(scale_vars, 2, min)
+
+
+scale_vars <- scale_vars %>%
+  scale(center = mins, scale = maxs - mins) %>%
+  as.data.frame()
+
+
+dummy_vars <- dummy_cols(dummy_vars, select_columns=c("job_satisfaction", "performance_rating", "department","job_level", "business_travel", "marital_status"),
+           remove_first_dummy = FALSE,
+           remove_selected_columns = TRUE)
+
+employeeDF <- bind_cols(scale_vars, dummy_vars)%>%
+  mutate(left_company = if_else(left_company == "Yes", 1, 0) )
+
+
+
+# Rename Dummy variables as needed
+employeeDF <- employeeDF %>% rename(
+    "department_IT_Analytics" ="department_IT and Analytics",
+    "department_Product_Development" = "department_Product Development",
+    "job_level_Senior_Manager" = "job_level_Senior Manager",
+    "job_level_Vice_President" = "job_level_Vice President",
+    "job_satisfaction_Very_High" = "job_satisfaction_Very High",
+    "performance_rating_Meets_Expectations" ="performance_rating_Meets Expectations",
+    "performance_rating_Minimally_Effective" ="performance_rating_Minimally Effective",
+    "performance_rating_Not_Effective" = "performance_rating_Not Effective",
+    "performance_rating_Exceeds_Expectations" = "performance_rating_Exceeds Expectations",
+    "department_Finance_and_Operations" ="department_Finance and Operations" 
+)
+
+# Add or remove variables as needed
+employeeDF = select(employeeDF, c(-"job_satisfaction_Low",-"performance_rating_Minimally_Effective",
+                                  -"department_Product_Development",-"job_level_Vice_President",
+                                  -"performance_rating_Not_Effective", -"business_travel_None", 
+                                  -"marital_status_Single") )
+  
+ colnames(employeeDF)
+
+
+```
+
+```{r}
+### Generate training and validation datasets
+# For the prediction, we generate the training and validation set using the "rsample" package.
+# Generate the training and validation dataset set. 
+
+set.seed(739)
+employee_split <- initial_split(employeeDF, prop = 0.60)
+employee_training <- employee_split %>% training()
+employee_test <- employee_split  %>%  testing()
+```
+
+```{r}
+neuralFunction <- function(input,s ){
+
+
+ nn <- neuralnet(left_company ~. , data = employee_nn, hidden =  input )
+
+ plot(nn, rep = "best")
+
+ #print(" Training Graphs")
+ #plotFunction(nn,employee_training, paste(s," Training"))
+
+ print(" Validation Graphs")
+ plotFunction(nn,employee_test, paste(s," Validation"))
+}
+```
+
+```{r}
+plotFunction <- function(inputNN, data, s ){
+# Make predictions
+  predictions <- predict(inputNN, data, type = "response")
+  
+  # Convert probabilities to binary predictions
+  binary_predictions <- ifelse(predictions > 0.5, 1, 0)
+  
+  # Create confusion matrix
+  confusion_matrix <- table(binary_predictions, as.numeric(data$left_company) )
+  
+  # Evaluate the model
+  roc_curve <- roc(as.numeric(data$left_company) , as.numeric(predictions))
+  NNtitle = paste( "AUC Curve:" ,s )
+  plot(roc_curve, main = NNtitle, col = "red", lwd = 2)
+  auc_score <- auc(roc_curve)
+   
+  # Print confusion matrix and AUC ROC
+  print("Confusion Matrix:")
+  print(confusion_matrix)
+  
+  cat("\n AUC ROC Score:", auc_score)
+  cat( "\n" ,s)
+  cat( "\n\n\n")
+}
+  
+```
+
+```{r}
+library(neuralnet)
+library("pROC")
+### Generate the neural network
+# Next we use the neuralnet command to generate the neural network. In this network, we
+# specify hidden = 2, which corresponds to & hidden neurons in each lager. The model include
+#all the dummies we'd generated earlier.
+
+employee_nn <- employee_training
+
+#employee_nn = select(employee_nn, -1)
+
+hidden_df <- data.frame(
+  hidden_values = I(list(c(5), c(5, 5), c(5, 5, 5)))
+   # Test program:
+   # hidden_values = I(list(c(1), c(1, 1), c(1, 1, 1)))
+)
+
+arrayString <- c("NN: 1 hidden layer with 5 nodes",
+"NN: 2 hidden layer with 5 nodes",
+"NN: 3 hidden layer with 5 nodes")
+
+
+```
+
+```{r}
+## Loop over different Neural Networks
+
+## • Neuralnet with one hidden layer with five nodes
+## • Neuralnet with two hidden layers with five nodes in each layer
+## • Neuralnet with three hidden layers and five nodes in each layer
+
+for (index in 1:1) {
+ 
+  cat("\n")
+  neuralFunction( hidden_df$hidden_values[[index]], arrayString[index] )
+  cat("\n")
+
+}
+```
+\newpage
+
+## Results
+
+###  • Neuralnet with one hidden layer with five nodes
+
+ Confusion Matrix:
+ 
+         binary_predictions    0  1
+ 
+                           0  489 12
+                  
+                           1   7  80
+
+AUC ROC Score: 0.98054
+
+### • Neuralnet with two hidden layers with five nodes in each layer
+
+Confusion Matrix:
+         
+         binary_predictions     0   1
+
+                           0   487 13
+         
+                           1   9  79
+         
+AUC ROC Score: 0.92571
+         
+### • Neuralnet with three hidden layers and five nodes in each layer
+
+Confusion Matrix:
+
+        binary_predictions       0   1
+
+                             0  486 10
+  
+                             1  10  82
+
+ AUC ROC Score: 0.9522923
+
+## Conclusion
+
+Neuralnet with one hidden layer with five nodes performed the best out of the three models with an  AUC ROC Score of 0.98054.
+
+Neuralnet with three hidden layers and five nodes in each layer performed the second best out of the three models with an  AUC ROC Score of 0.9522923.
+ 
+While, Neuralnet with two hidden layers with five nodes in each layer performed the worst out of the three models with an  AUC ROC Score of 0.92571
+
+

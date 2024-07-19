@@ -1,0 +1,520 @@
+---
+title: "Week 5 - Decision Trees and Ensembles"
+author: "Dolores Farley - George Mason University, School of Business"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+editor_options:
+  markdown:
+    wrap: sentence
+---
+## Week 5 – Decision Trees and Ensembles Assignment
+
+### Addressing Employee Attrition
+For this assignment we will look at the employee attrition data. Ideally, companies would like to keep
+attrition rates (the proportion of employees leaving a company for other opportunities) as low as
+possible due to the variable costs and business disruptions that come with replacing productive
+employees on short notice.
+In the recent past, before Covid struck, the company had seen an increase in the rate of employee
+departures. Being a tech company, and with certain skills being rare, employee retention has been a
+challenge. This has taken a toll on their operations and ability to deliver quality products. The
+information related to the dataset is available below.
+
+### Employee Attrition Data
+The following data consists of 1,470 employee records for a U.S. based product company. The rows
+in this data frame represent an employee’s attributes across the variables listed in the table below.
+Variable Definition Data Type
+left_company Did the employee leave the company? (Yes/No) Factor
+department Department within the company Categorical
+job_level Job Level (Associate - Vice President) Categorical
+salary Employee yearly salary (US Dollars) Numeric
+weekly_hours Self-reported average weekly hours spent on the
+job (company survey)
+Numeric
+business_travel Level of required business travel Categorical
+yrs_at_company Tenure at the company (years) Numeric
+yrs_since_promotion Years since last promotion Numeric
+previous_companies Number of previous companies for which the
+employee has worked
+Numeric
+job_satisfaction Self-reported job satisfaction (company survey) Factor 
+performance_rating Most recent annual performance rating Factor
+marital_status Marital status (Single, Married, or Divorced) Categorical
+miles_from_home Distance from employee address to office location Numeric
+While importing the data csv file, the data type may not match with the data type given above. Please
+convert them to appropriate data type, before doing any analysis. Also generate the dummies a
+
+
+## MBA 739 – Advanced Analytics
+
+### Questions
+Using the employee attrition data, build the following models, and compare its overall performance
+using the confusion matrix, and AUC ROC. The objective is to predict with outcome variable
+left_company
+• Fully grown classification tree
+• Pruned classification tree
+• Bagging
+• Random Forest
+• Boosting
+Use an RMarkdown file, build the model, provide your assessment about the models, and choose the
+best possible model. Once done, knit the file into Word document and upload the answers.
+
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(fastDummies)
+library(tidyverse)
+
+set.seed(739)
+
+EmployeeData <- read_csv("~/Desktop/GMU School/MBA_739/Week5/Assignment5/EmployeeData.csv")
+EmployeeData <- EmployeeData %>%
+             mutate(left_company = as.factor(left_company)) %>%
+           mutate(job_satisfaction = as.factor(job_satisfaction)) %>%
+           mutate(performance_rating = as.factor(performance_rating))
+  
+
+#For Train data
+employeeDF <- na.omit(dummy_cols(EmployeeData, 
+                      select_columns = c("department", "job_level", "business_travel", 
+                      "marital_status"),
+                      remove_first_dummy = TRUE))
+
+
+ colnames(employeeDF)
+
+employeeDF <- employeeDF %>% 
+  rename(
+    "department_IT_Analytics" ="department_IT and Analytics", 
+    "department_Product_Development" = "department_Product Development",
+    "job_level_Senior_Manager" = "job_level_Senior Manager",
+    "job_level_Vice_President" = "job_level_Vice President")
+
+#employeeDF <- na.omit(EmployeeData)
+
+#mutate(left_company = factor(left_company, levels=c(0, 1), labels=c("No", "Yes")) )
+
+class.tree <- rpart(left_company ~ ., data = employeeDF,
+                    control = rpart.control(minsplit = 0),
+                    method = "class")
+
+
+
+rpart.rules(class.tree)
+
+```
+
+### Depict Decision Trees Using rpart.plot
+
+We can use the R function rpart.plot() from the rpart.plot package to create visual representations of the decision trees.
+When using the R function rpart.plot() for plotting a tree, nodes are depicted by ovals with the color indicating the predicted class and the intensity of the color the purity of the node.
+The node is labeled with the name of the majority class and the two numbers below it give the counts of records in each class.
+For example, the green node below labeled Owner has 16 records, 5 of them are Nonowner and 11 Owner.
+The name of the variable chosen for splitting and its splitting value are below each decision node.
+The arguments type and extra control the representation of the tree.
+
+The code below creates a classification tree predicting Ownership based on all other variables in the mowers.df dataset (. stands for all other variables).
+maxdepth=2 means we're limiting the tree's depth to two levels to avoid overfitting.
+
+```{r}
+library(rpart)
+library(rpart.plot)
+
+
+# use rpart() to run a classification tree.
+# define rpart.control() in rpart() to determine the depth of the tree.
+class.tree <- rpart(left_company ~ ., data = employeeDF,
+    control=rpart.control(maxdepth=2), method="class")
+## plot tree
+# use rpart.plot() to plot the tree. You can control plotting parameters such
+# as color, shape, and information displayed (which and where).
+rpart.plot(class.tree, extra=1, fallen.leaves=FALSE)
+```
+
+After building the tree, we can visualize it using rpart.plot().
+extra=1 shows the percentage of observations in each group at the tree's branches, and fallen.leaves=FALSE arranges the final groups (leaves) at the top of the plot for easy readability.
+
+In the code below, we construct another tree but change the minimum number of observations needed for a split (minsplit=2).
+It's another way to control tree complexity.
+
+```{r}
+  class.tree <- rpart(left_company ~ ., data = employeeDF,
+      control=rpart.control(minsplit=2), method="class")
+  rpart.plot(class.tree, extra=1, fallen.leaves=FALSE)
+```
+
+the first tree is limited in its depth, creating a simpler model, while the second tree can potentially have more splits and thus more complexity, because even nodes with just one observation will have splits attempted.
+
+It's important to note that when building a classification tree, there's always a balance to be struck between a tree that's too simple (which may not capture important patterns in the data) and one that's too complex (which may overfit the data, capturing noise rather than signal).
+The rpart.control() function is one of the tools that allows you to strike this balance.
+
+### Textual Representation of Tree
+
+We can also get a textual representation of a decision tree.
+Below is the one for the fully grown tree.
+Line 2, for example, shows that the decision at the first split is Income \< 59.7.
+There are eight records that match this condition.
+One record is labeled Owner and the majority of records are Nonowner.
+Finally, the two numbers in brackets give the propensity of the node: 0.875 for Nonowner and 0.125 for Owner.
+
+```{r}
+class.tree
+```
+
+# Evaluating the Performance of a Classification Tree
+
+```{r}
+library(tidyverse)
+library(caret)
+library(tidymodels)
+library(rpart)
+library(rpart.plot)
+
+
+# partition
+#set.seed(12345)
+
+#split_dataset <- initial_split(employeeDF, prop=0.6)
+
+#data_training <- split_dataset %>% training()
+#data_testing <- split_dataset %>% testing()
+
+idx <- createDataPartition(employeeDF$left_company, p=0.6, list=FALSE)
+train.df <- employeeDF[idx, ]
+holdout.df <- employeeDF[-idx, ]
+
+# classification tree
+default.ct <- rpart(left_company ~ ., data=train.df, method="class")
+# plot tree
+rpart.plot(default.ct, extra=1, fallen.leaves=FALSE)
+
+```
+
+
+Following is the instance of a fully-grown tree.
+The way to do is to by setting the following parameters.
+
+-   cp=0 means that no complexity parameter threshold is set for pruning the tree, so it will grow until all leaves are pure or until only minsplit observations are left in a node.
+
+-   minsplit=1 sets the minimum number of observations that must exist in a node in order for a split to be attempted to 1.
+
+
+## Question 1 Full Tree
+```{r} 
+fullygrown_ct <- rpart(left_company ~ ., data=train.df, method="class", cp=0, minsplit=1)
+# count number of leaves
+sum(fullygrown_ct$frame$var == "<leaf>")
+# plot tree
+rpart.plot(fullygrown_ct, main="FULL Tree", extra=1, fallen.leaves=FALSE)
+```
+
+Below is the confusion matrix of the default tree.
+
+The **`predict()`** function is used to generate predicted classes from the classification tree (**`default.ct`**).
+We use the the **`confusionMatrix()`** to get the confusion matrix as well as other insights like accuracy, precision, recall, and other important metrics of the model's performance.
+We do this for both the training and the holdout or test data.
+
+```{r}
+library("rsample")
+library("tidyverse")
+library("caret")
+library("pROC")
+library("factoextra")
+library("cluster")
+
+library("rsample")
+library("tidyverse")
+library("caret")
+library("pROC")
+library("factoextra")
+library("cluster")
+
+
+#install.packages('caret')
+
+#Import required library
+library(caret)
+# classify records in the holdout data.
+# set argument type = "class" in predict() to generate predicted class membership.
+default.ct.point.pred.train <- predict(default.ct, train.df, type = "class")
+
+# generate confusion matrix for training data
+confusionMatrix(default.ct.point.pred.train, train.df$left_company)
+
+### repeat the code for the holdout set, and the deeper tree
+default.ct.point.pred.holdout <- predict(default.ct, holdout.df, type = "class")
+confusionMatrix(default.ct.point.pred.holdout, holdout.df$left_company)
+
+# Plot AUC curve for training set
+roc_train <- roc(as.numeric(train.df$left_company), as.numeric(default.ct.point.pred.train))
+plot(roc_train, main = "FULL AUC Curve - Training Set", col = "blue", lwd = 2)
+
+# Plot AUC curve for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(default.ct.point.pred.holdout))
+plot(roc_holdout, main = "FULL AUC Curve - Holdout Set", col = "red", lwd = 2)
+
+# Calculate AUC for training set
+roc_train <- roc(as.numeric(train.df$left_company), as.numeric(default.ct.point.pred.train))
+auc_train <- auc(roc_train)
+print("AUC - Training Set:")
+print (auc_train)
+
+# Calculate AUC for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(default.ct.point.pred.holdout))
+auc_holdout <- auc(roc_holdout)
+print("AUC - Holdout Set:")
+print( auc_holdout)
+
+```
+
+```{r}
+
+# Repeat for fully-grown or deeper tree
+fullygrown_ct.point.pred.train <- predict(fullygrown_ct,train.df,type = "class")
+confusionMatrix(fullygrown_ct.point.pred.train, train.df$left_company)
+
+fullygrown_ct.point.pred.holdout <- predict(fullygrown_ct,holdout.df,type = "class")
+confusionMatrix(default.ct.point.pred.holdout, holdout.df$left_company)
+```
+## Question 2 PRUNE Tree
+
+We notice that the accuracy is highest with the cp value closer to 0.001.
+Hence we narrow the focus grid search around cp = 0.001.
+
+While it is in principle possible to implement and run an exhaustive grid search for all possible parameters in R, it can quickly become very time consuming.
+For example, the suggested grid search would require running 11×6×11 = 726 combinations.
+
+### Pruning the Tree
+
+### Stopping Tree Growth: Conditional Inference Trees
+
+The idea behind pruning is to recognize that a very large tree is likely to overfit the training data, and that the weakest branches, which hardly reduce the error rate, should be removed.
+
+Pruning consists of successively select-ing a decision node and redesignating it as a leaf node [lopping off the branches extending beyond that decision node (its subtree) and thereby reducing the size ofthe tree].
+
+In the code below, we use the **`rpart`** function to create a decision tree model with 5-fold cross-validation.
+The **`cp`** argument sets the minimum complexity parameter, and **`xval`** sets the number of folds for cross-validation.
+**`minsplit`** sets the minimum number of observations that must exist in a node in order for a split to be attempted.
+We use the **`printcp()`** function to print the cross-validated error, standard errors, and complexity parameter values.
+
+
+
+We prune the decision tree to the optimal size using the **`prune()`** function.
+Here, we're pruning to the complexity parameter (**`cp`**) that minimizes cross-validated error.
+Finally, we count the number of leaves (terminal nodes) in the pruned tree and visualize it using the **`rpart.plot()`** function.
+
+
+
+## Best-Pruned Tree
+
+We'll utilize cross-validation results to identify the best complexity parameter (cp), which controls the size of our decision tree.
+
+1.  **Identify Optimal cp Value:** We find the row in the **`cptable`** of our cross-validated model **`cv.ct`** where the cross-validated error (**`xerror`**) is minimum.
+    We also calculate a cutoff as the sum of this minimum error and its corresponding standard error (**`xstd`**).
+
+2.  **Select Best cp:** We then select the first cp value where the cross-validated error is less than our calculated cutoff.
+    This is our best cp for pruning the decision tree.
+
+3.  **Prune the Tree:** We prune our original decision tree **`cv.ct`** with this optimal cp value to obtain the best tree **`best.ct`**.
+
+4.  **Count Leaves and Visualize Tree:** Finally, we count the number of terminal nodes (or "leaves") in our pruned tree and visualize it.
+
+```{r}
+## Plot and print sp to get the cross-validation error for each nsplit
+plotcp(fullygrown_ct)
+printcp(fullygrown_ct)
+```
+The formula below captures the opt 202410.15843 MBA-739-301 (Spring 2024) le used for the pruning of the
+tree directly.
+
+```{r}
+library(rpart)
+library(rpart.plot)
+library(tidyverse)
+library(caret)
+
+# use method "anova" for a regression model
+cv.rt <- rpart(left_company ~ ., data=train.df, method="anova",
+    cp=0.000001, minsplit=10, xval=5)
+
+minErrorRow <- cv.rt$cptable[which.min(cv.rt$cptable[,"xerror"]), ]
+#cutoff <- minErrorRow["xerror"] + minErrorRow["xstd"]
+best.cp <- cv.rt$cptable[which.min(cv.rt$cptable[,"xerror"]),"CP"]
+
+#print(best.cp )
+# pruned.ct <- prune(cv.ct, cp=best.cp)
+best.rt <- rpart(left_company ~ ., data=train.df, method="class", cp=best.cp, minsplit=10)
+
+
+# set digits to a negative number to avoid scientific notation
+rpart.plot(best.rt, main="PRUNE Tree", extra=1, fallen.leaves=FALSE, digits=-4)
+  
+  # Repeat for Prune Tree
+prune.ct.point.pred.train <- predict(best.rt,train.df,type = "class")
+confusionMatrix(prune.ct.point.pred.train, train.df$left_company)
+
+prune.ct.point.pred.holdout <- predict(best.rt,holdout.df,type = "class")
+confusionMatrix(prune.ct.point.pred.holdout, holdout.df$left_company)
+  
+
+# Plot AUC curve for training set
+roc_train <- roc(as.numeric(train.df$left_company), as.numeric(prune.ct.point.pred.train))
+plot(roc_train, main = "PRUNE AUC Curve - Training Set", col = "blue", lwd = 2)
+
+# Plot AUC curve for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(prune.ct.point.pred.holdout))
+plot(roc_holdout, main = "PRUNE AUC Curve - Holdout Set", col = "red", lwd = 2)
+
+# Calculate AUC for training set
+roc_train <- roc(as.numeric(train.df$left_company), as.numeric(prune.ct.point.pred.train))
+auc_train <- auc(roc_train)
+print("PRUNE AUC - Training Set:")
+print (auc_train)
+
+# Calculate AUC for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(prune.ct.point.pred.holdout))
+auc_holdout <- auc(roc_holdout)
+print("PRUNE AUC - Holdout Set:")
+print( auc_holdout)
+
+
+  
+```
+
+# Classification Rules from Trees
+
+The rpart.plot package has the rpart.rules() function to extract rules from a tree.
+The code below has the rules extracted from the best-pruned tree.
+
+```{r}
+rpart.rules(best.rt)
+```
+
+# Question 3:  Improving Prediction: Random Forests and Boosted Trees
+
+## Random Forests
+
+The **`randomForest()`** function is used to build a random forest model.
+The target variable is **`left_company`**, and predictor variables are all other columns in **`train.df`**.
+The **`ntree`** argument sets the number of trees in the forest, **`mtry`** sets the number of variables randomly sampled as candidates at each split, and **`nodesize`** sets the minimum size of terminal nodes.
+The random forests can produce "variable importance" scores, which measure the relative contribution of the different predictors.
+The importance score for a particular predictor is computed by summing up the decrease in the Gini index for that predictor over all the trees in the forest.
+
+```{r}
+library(randomForest)
+#define new data frame
+new_data <- data.frame(x=c(1:27)) 
+## random forest
+rf <- randomForest(as.factor(left_company) ~ ., data = train.df, ntree = 500, 
+    mtry = 4, nodesize = 5, importance = TRUE)
+
+## variable importance plot
+varImpPlot(rf, type=1)
+
+## confusion matrix
+rf.pred <- predict(rf, holdout.df)
+confusionMatrix(rf.pred, holdout.df$left_company)
+
+library(randomForest)
+library(pROC)
+
+# Define new data frame for AUC calculation
+new_data <- data.frame(x = c(1:27))
+
+# Train Random Forest model
+rf <- randomForest(as.factor(left_company) ~ ., data = train.df, ntree = 500, 
+                   mtry = 4, nodesize = 5, importance = TRUE)
+
+# Predict on the holdout set
+rf.pred <- predict(rf, holdout.df)
+
+
+
+# Plot AUC curve for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(rf.pred))
+plot(roc_holdout, main = "Random Forest AUC Curve - Holdout Set", col = "red", lwd = 2)
+
+
+# Calculate AUC for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(rf.pred))
+auc_holdout <- auc(roc_holdout)
+print("Random Forest AUC - Holdout Set:")
+print( auc_holdout)
+
+```
+
+# Question 4: Boosted Trees
+
+XGBoost, or Extreme Gradient Boosting, employs the concept of 'boosting', where weak, simple models are sequentially trained to create a strong learner that minimizes prediction errors.
+The argument method="xgbTree" specifies the use of XGBoost model.
+The verbosity=0 argument suppresses the model's iterative output to keep the console clean.
+
+```{r}
+library(caret)
+library(xgboost)
+
+xgb <- train(left_company~ ., data=train.df, method="xgbTree", verbosity=0)
+
+## confusion matrix
+xgb.pred <- predict(xgb, holdout.df)
+confusionMatrix(xgb.pred, holdout.df$left_company)
+```
+
+This model is similar to the first one, but with a specific focus on imbalanced datasets, which is achieved by setting the **`scale_pos_weight`** argument to a value greater than 1.
+This value is used as a ratio for handling class imbalance.
+By setting it to 10, the model gives higher importance to the minority class.
+
+```{r}
+# Focused Boosted Tree
+xgb.focused <- train(left_company~ ., data=train.df,
+             method="xgbTree", verbosity=0,
+             scale_pos_weight=10)
+## confusion matrix
+xgb.focused.pred <- predict(xgb.focused, holdout.df)
+confusionMatrix(xgb.focused.pred, holdout.df$left_company)
+
+# Plot AUC curve for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(xgb.focused.pred))
+plot(roc_holdout, main = "Boosted Tree AUC Curve - Holdout Set", col = "red", lwd = 2)
+
+
+# Calculate AUC for holdout set
+roc_holdout <- roc(as.numeric(holdout.df$left_company), as.numeric(xgb.focused.pred))
+auc_holdout <- auc(roc_holdout)
+print("Boosted Tree AUC - Holdout Set:")
+print( auc_holdout)
+```
+\newpage
+
+## Results
+
+### Full Tree:
+Accuracy: 96.59%
+AUC (Holdout Set): .941
+
+
+### Pruned Tree:
+Accuracy: 96.59%%
+AUC (Holdout Set): .9516
+
+
+### Random Forest:
+Accuracy: 97.79%
+AUC (Holdout Set): .9524
+
+
+
+### Boosted Trees:
+Accuracy: 98.13%
+AUC (Holdout Set): .9587
+
+
+
+
+## Conclusion
+In conclusion, all models (Full Tree, Pruned Tree, Random Forest, and Boosted Trees) demonstrate high accuracy and good performance based on ROC and AUC metrics. Boosted Trees seem to have the highest performance with the highest accuracy and AUC on the holdout set. It's essential to consider the specific requirements and priorities of the task at hand when choosing the most suitable model.
+
+

@@ -1,0 +1,66 @@
+---
+title: "Scaled"
+output:
+  pdf_document: default
+  html_document: default
+date: "`r Sys.Date()`"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r}
+library(tidyverse)
+library(factoextra)
+library(skimr)
+testCarLoans  <- read.csv("~/Desktop/GMU School/MBA_739/Project Week5/FinalProject/DataSets/FinalTrainDataSource.csv")
+# Construct a normalized dataset for everything other than the labels
+
+testCarLoans1 <-  na.omit(testCarLoans)
+
+testCarLoans1 <- testCarLoans1 %>%
+   select(-Default) %>%
+  scale()
+
+#skim(framingham)
+#summary(framingham)
+
+testCarLoans <- testCarLoans[1:20000,]
+set.seed(739)
+
+km.testCarLoans =kmeans(testCarLoans,2,nstart=60)
+
+# Visualize K-Means Clustering
+fviz_cluster(km.testCarLoans, data = testCarLoans,
+             palette = c("#1B9E77", "#D95F02"), 
+             geom = "point",
+             ellipse.type = "convex", 
+             ggtheme = theme_bw()
+             )
+
+# Visualize K-Means Clustering
+#fviz_cluster(km.framingham, data = framingham,
+#             palette = c("#1B9E77", "#D95F02", "#7570B3", "#E7298A", "#66A61E"), 
+#             geom = "point",
+#             ellipse.type = "convex", 
+#             ggtheme = theme_bw()
+#              )
+
+#We can also determine as to which clusters are closer to each other by looking at the distance between the clusters. As seen from the following code, Clusters 1 and 2 are more closer to each other, compared to other options. This can be visually ascertained from the previous command.
+#try: distances between clusters
+dist(km.testCarLoans$centers)
+
+
+# Silhoutte Method
+fviz_nbclust(testCarLoans, kmeans, method = "silhouette")+
+ labs(subtitle = "Silhouette method")
+```
+

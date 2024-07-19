@@ -1,0 +1,158 @@
+---
+title: "MBA 739 Assignment 7"
+author: "Dolores Farley - George Mason University, School of Business"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+editor_options:
+  markdown:
+    wrap: sentence
+---
+## MBA 739 – Advanced Analytics
+Week 7 Text Mining Assignment
+
+Book Exercise Chapter 20 Problem 3
+
+Classifying Classified Ads Submitted Online. Consider the case of a website that caters to the needs
+of a specific farming community, and carries classified ads intended for that community. Anyone,
+including robots, can post an ad via a web interface, and the site owners have problems with ads that
+are fraudulent, spam, or simply not relevant to the community. They have provided a file with 4143
+ads, each ad in a row, and each ad labeled as either 0 (not relevant) or 1 ( relevant). The goal is to
+develop a predictive model that can classify ads automatically.
+
+
+• Open the file farm-ads.csv, and briefly review some of the relevant and non-relevant ads to
+get a flavor for their contents.
+
+
+• Following the example in the chapter, preprocess the data in R, and create a term-document
+matrix, and a concept matrix. Limit the number of concepts to 5.
+
+a) Using logistic regression, partition the data (60% training, 40% validation), and develop a
+model to classify the documents as ‘relevant’ or ‘non-relevant.’ Comment on its efficacy.
+Use the R Markdown file available in RStudio Cloud/Blackboard to complete the homework.
+1
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+
+library(tm)
+library(caret)
+library(tidyverse)
+library(tinytex)
+library(lsa)
+library(rsample)
+farm_ads <- read.csv("~/Desktop/GMU School/MBA_739/Week7/Week7_Assignments/farm-ads.csv")
+text <- c (2)
+#View(farm_ads)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r}
+barplot(prop.table(table(farm_ads$label)))
+farm_corp <- Corpus(VectorSource(farm_ads$text))
+farm_corp <- farm_corp %>%
+  tm_map(removeNumbers) %>%
+  tm_map(tolower) %>%
+  tm_map(removePunctuation) %>%
+  tm_map(stripWhitespace) %>% 
+  tm_map(removeWords, stopwords("english")) %>%
+  tm_map(stemDocument) 
+
+# inspect(farm_corp)
+tdm <- TermDocumentMatrix(farm_corp)
+```
+
+```{r}
+# Term Frequency-Inverse Document Frequency (TF-IDF) and latent semantic analysis
+removesparse = removeSparseTerms(tdm,0.98)
+
+#removesparse = removeSparseTerms(tdm,0.95)
+#Extract Concepts
+farm_tdm<- weightTfIdf(removesparse)
+inspect(farm_tdm)
+#farm_tdm<- weightTfIdf(tdm)
+farm_concept <- lsa(farm_tdm, dim = 5)
+#farm_concept <- lsa(farm_tdm, dim = 5)
+
+#inspect(farm_tdm)
+
+
+farm_df <- as.data.frame(as.matrix(farm_concept$dk)) 
+Ads_df_analysis <- data.frame(ifelse(farm_ads$label==-1, 0,farm_ads$label ), farm_df)
+names(Ads_df_analysis)[1] <- "label"
+barplot(prop.table(table(Ads_df_analysis$label)))
+```
+```{r}
+set.seed(739)
+farm_words_split <- initial_split(Ads_df_analysis , prop = 0.60)
+farm_words_split_train <- farm_words_split %>% 
+  training()
+Afarm_words_split_valid <- farm_words_split %>% 
+  testing()
+``` 
+
+```{r}
+# run logistic model on training
+reg <- glm(label~ ., data = farm_words_split_train, family = 'binomial') 
+#Accuracy on validation set
+predictions <- predict(reg, newdata = Afarm_words_split_valid , type = "response")
+
+ # Convert probabilities to binary predictions
+  binary_predictions <- ifelse(predictions > 0.5, 1, 0)
+```
+
+```{r}
+
+library(pROC)
+
+# Confusion Matrix
+  confusionMatrix(table(binary_predictions, Afarm_words_split_valid$label))
+
+# Evaluate the model
+  roc_curve <- roc(as.numeric(Afarm_words_split_valid$label) , as.numeric(predictions))
+  plot(roc_curve, main = "AUC Curve:", col = "red", lwd = 2)
+  auc_score <- auc(roc_curve)
+  
+  # Print AUC ROC
+  
+  cat("\n AUC ROC Score:", auc_score)
+
+```
+\newpage
+
+## Results 
+
+With using 0.98 for sparseness and a concepts of 5,  we have the following results an Accuracy of 0.7207, AUC ROC Score of 0.8657945 with Sensitivity of 0.4690 and Specificity of 0.9589  
+
+Confusion Matrix and Statistics
+
+                  
+  
+         binary_predictions 
+                 
+                     0   1
+
+                  0 378  35
+                 
+                  1 428 817
+                 
+## Conclusion 
+
+With a sparseness ratio of 0.98 and limiting the number of concepts to 5, the model achieved an accuracy of 0.7207 and an AUC ROC score of 0.8657945. These metrics indicate a moderately successful performance in distinguishing between relevant and non-relevant ads.
+
+The sensitivity of 0.4690 suggests that the model's ability to correctly identify relevant ads is relatively lower, while the specificity of 0.9589 indicates a strong capability to correctly identify non-relevant ads.
+ 
+                                          
+                      
+                  
+
